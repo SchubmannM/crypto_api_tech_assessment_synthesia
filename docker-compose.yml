@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ./entrypoint.sh
+    # command: daphne -b 0.0.0.0 -p 8000 crypto_api.asgi:application
+    # command: python /code/manage.py runserver 0.0.0.0:8000
+    command: ["sh", "-c", "pip install debugpy -t /tmp && python ./manage.py migrate && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 ./manage.py runserver 0.0.0.0:8000"]
+    volumes:
+      - .:/code
+    ports:
+      - 8000:8000
+      - 5678:5678
+      - 9922:22
+    env_file:
+      - ./.env
+    networks:
+      - live
+  redis:
+    restart: always
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    hostname: redis
+    volumes:
+      - redis_jusintime_data:/data
+    networks:
+      - live
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A crypto_api worker --loglevel=INFO --concurrency=1
+    volumes:
+      - .:/code
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+    networks:
+      - live
+
+volumes:
+  redis_jusintime_data:  
+
+networks:
+  live:

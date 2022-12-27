@@ -1,0 +1,24 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+python-dotenv = "*"
+requests = "*"
+ratelimiter = "*"
+django = "*"
+django-extensions = "==3.2.1"
+daphne = "*"
+djangorestframework = "*"
+django-redis = "*"
+celery = {extras = ["redis"], version = "*"}
+debugpy = "*"
+
+[dev-packages]
+mypy = "*"
+black = "*"
+reorder-python-imports = "*"
+
+[requires]
+python_version = "3.10"
