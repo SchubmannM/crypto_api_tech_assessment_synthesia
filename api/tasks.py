@@ -1,31 +1,14 @@
-from celery import shared_task
-from api.client.crypto_client import CryptoBaseClient
+from datetime import timedelta
 from django.utils import timezone
-from api.models import CryptoMessage
+from api.models import CryptoMessage, MadeRequest
+from api.process_message import process_message
 
-RATE_LIMIT = 10  # tasks per second
-TIME_LIMIT = 60  # seconds
-RETRIES_LIMIT = 10  # Maximum number of retries for each task
+MAX_REQUESTS_PER_MINUTE = 10
 
-
-@shared_task(
-    rate_limit=RATE_LIMIT,
-    time_limit=TIME_LIMIT,
-    max_retries=RETRIES_LIMIT,
-    retry_backoff=True,
-)
-def process_crypto_request(crypto_message_id):
-    crypto_client = CryptoBaseClient()
-    message = CryptoMessage.objects.get(id=crypto_message_id)
-    if message.fulfilled:
-        return
-    content, status_code = crypto_client.sign_message(message.message)
-    if status_code == 200:
-        message.signature = content
-        message.save()
-        response = crypto_client.send_response(callback_url=message.callback_url, signature=message.signature)
-        if response.status_code == 200:
-            message.fulfilled = timezone.now()
-            message.save()
-
-    
+def process_unfulfilled_messages():
+    requests_made_in_the_last_minute = MadeRequest.objects.filter(created__gte=timezone.now()-timedelta(minutes=1)).count()
+    allowed_requests = MAX_REQUESTS_PER_MINUTE - requests_made_in_the_last_minute
+    while allowed_requests > 0:
+        unprocessed_messages = CryptoMessage.objects.filter(fulfilled__isnull=True).order_by('created')
+        for message in unprocessed_messages:
+            process_message(message)

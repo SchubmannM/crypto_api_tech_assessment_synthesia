@@ -17,6 +17,10 @@ app.conf.result_backend = 'redis://redis:6379'
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
 
+@app.on_after_configure.connect
+def setup_periodic_tasks(sender, **kwargs):
+    # Calls test('world') every 30 seconds
+    sender.add_periodic_task(30.0, test.s('world'), expires=10)
 
 @app.task(bind=True)
 def debug_task(self):
