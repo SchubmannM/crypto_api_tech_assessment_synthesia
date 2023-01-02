@@ -2,13 +2,13 @@ version: '3.9'
 
 services:
   web:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     entrypoint: ./entrypoint.sh
     # command: daphne -b 0.0.0.0 -p 8000 crypto_api.asgi:application
-    # command: python /code/manage.py runserver 0.0.0.0:8000
-    command: ["sh", "-c", "pip install debugpy -t /tmp && python ./manage.py migrate && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 ./manage.py runserver 0.0.0.0:8000"]
+    command: python /code/manage.py runserver 0.0.0.0:8000
+    # command: ["sh", "-c", "pip install debugpy -t /tmp && python ./manage.py migrate && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 ./manage.py runserver 0.0.0.0:8000"]
     volumes:
       - .:/code
     ports:
@@ -42,9 +42,31 @@ services:
       - redis
     networks:
       - live
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A crypto_api beat --loglevel=INFO
+    volumes:
+      - .:/code
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+    networks:
+      - live
+  db:
+    image: postgres:14.5
+    volumes:
+    - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ./.env
+    networks:
+      - live
 
 volumes:
-  redis_jusintime_data:  
+  redis_jusintime_data:
+  postgres_data:
 
 networks:
   live:

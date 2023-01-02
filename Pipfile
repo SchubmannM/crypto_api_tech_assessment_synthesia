@@ -14,11 +14,13 @@ djangorestframework = "*"
 django-redis = "*"
 celery = {extras = ["redis"], version = "*"}
 debugpy = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 mypy = "*"
 black = "*"
 reorder-python-imports = "*"
+pre-commit = "*"
 
 [requires]
 python_version = "3.10"

@@ -1,13 +1,16 @@
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from json import JSONDecodeError
-from typing import Literal, Optional
-from django.utils import timezone
+from typing import Literal
+from typing import Optional
+
 import requests
+from django.db import DatabaseError
+from django.utils import timezone
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
-from urllib3 import Retry
 
+from api.manager import lock_table
 from api.models import MadeRequest  # type: ignore
 
 logger = logging.getLogger(__name__)
@@ -16,15 +19,14 @@ logger = logging.getLogger(__name__)
 ResponseFormat = Literal["json", "html"]
 HTTPMethod = Literal["get", "GET", "post", "POST", "put", "PUT", "delete", "DELETE"]
 
+
 def build_url(*args):
     """Build a URL from components."""
-    return '/'.join(a.strip('/') for a in args)
+    return "/".join(a.strip("/") for a in args)
 
 
 class BaseAPIClient:
-    def __init__(
-        self, base_url: str, session_auth: Optional[AuthBase]
-    ):
+    def __init__(self, base_url: str, session_auth: Optional[AuthBase]):
         self._url = base_url
         self._session = requests.Session()
 
@@ -33,7 +35,7 @@ class BaseAPIClient:
 
         self._session.mount(
             self._url,
-            HTTPAdapter(max_retries=Retry(backoff_factor=0.5, status_forcelist={429})),
+            HTTPAdapter(max_retries=0),
         )
 
     def _send_request(
@@ -50,26 +52,36 @@ class BaseAPIClient:
             if endpoint.lower().startswith("http")
             else build_url(self._url, endpoint)
         )
-
         args = {
-            'method': method.lower(),
-            'url': url,
-            'timeout': (1,2),
+            "method": method.lower(),
+            "url": url,
+            "timeout": (1, 1),
         }
 
         if params:
-            args['params'] = params
+            args["params"] = params
         if data:
-            args['json'] = data
+            args["json"] = data
 
-        response = None
+        response = requests.Response()
         try:
-            MadeRequest.objects.create(url=url)
-            response = self._session.request(**args)
+            try:
+                # Lock the table to ensure no new requests are made in between us counting and making a new request
+                with lock_table(MadeRequest):
+                    if (
+                        MadeRequest.objects.filter(
+                            created__gte=timezone.now() - timedelta(minutes=1)
+                        ).count()
+                        < 10
+                    ):
+                        MadeRequest.objects.create(url=url)
+                        response = self._session.request(**args)
+                        return response
+            except DatabaseError:
+                pass
             return response
 
         except JSONDecodeError as e:
             raise e
         except TimeoutError as e:
             raise e
-
