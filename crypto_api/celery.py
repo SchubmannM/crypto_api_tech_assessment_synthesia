@@ -24,6 +24,7 @@ app.autodiscover_tasks()
 def setup_periodic_tasks(sender, **kwargs):
     from api.tasks import process_unfulfilled_messages
 
+    # Add a repeating task which is run every 30 seconds and which times out after 10 seconds.
     sender.add_periodic_task(30.0, process_unfulfilled_messages, expires=10)
 
 

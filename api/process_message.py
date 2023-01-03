@@ -22,6 +22,17 @@ def reply_to_callback(crypto_message: CryptoMessage):
 def process_message(
     crypto_message: CryptoMessage, *, called_from_view: bool = False
 ) -> Tuple[Optional[str], int]:
+    """
+    Processing an instance of CryptoMessage. If this method was called through a view,
+    we return the results to the view. Otherwise we call the callback_url with the results.
+
+    If the crypto message already has a signature, we return the signature without calling the api.
+    If it was not yet fulfilled (-> the user has not yet received it) then we save the fulfillment time.
+
+    If there is no signature, we contact the API. If we receive a signature, we save it on the object instance
+    and return it. Otherwise we return a 202 (if the method was called from a view) or don't do anything
+    as all unfulfilled messages will get picked up periodically by the celery worker.
+    """
     if crypto_message.signature:
         if called_from_view:
             if crypto_message.fulfilled is None:

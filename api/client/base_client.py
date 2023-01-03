@@ -55,7 +55,10 @@ class BaseAPIClient:
         args = {
             "method": method.lower(),
             "url": url,
-            "timeout": (1, 1),
+            "timeout": (
+                1,
+                1,
+            ),  # Low timeouts as we MUST return a response within 2 seconds
         }
 
         if params:

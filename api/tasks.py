@@ -1,5 +1,7 @@
+import logging
 from datetime import timedelta
 
+from celery import Celery
 from django.utils import timezone
 
 from api.models import CryptoMessage
@@ -7,16 +9,20 @@ from api.models import MadeRequest
 from api.process_message import process_message
 
 MAX_REQUESTS_PER_MINUTE = 10
-from celery import Celery
 
 app = Celery("crypto_api")
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 @app.task
 def process_unfulfilled_messages():
+    """
+    Picks up unfulfilled messages and processes them without any specific order.
+    Only x messages are processed, x being a calculated number that depends on how many
+    requests were made by the client in the last 60 seconds, as we have a
+    10 requests per minutes threshold to honer.
+    """
     logger.info("Processing unfulfilled messages")
     requests_made_in_the_last_minute = MadeRequest.objects.filter(
         created__gte=timezone.now() - timedelta(minutes=1)
