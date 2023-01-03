@@ -62,3 +62,15 @@ And of course, let us know if you run into any problems or have any questions.
 
 - Do not spend time trying to understand what is wrong with the endpoint. This will not be useful in solving the challenge. Requests to `/crypto/sign` will sometimes randomly fail, and requests with the same message may take a few minutes to work successfully again.
     - If you see an error code that is not 4xx or 502, and you believe you are querying the API correctly, let us know so we can see if it is an issue with our challenge API.
+
+
+
+
+# Solution
+**Instruction**
+Run `docker compose up --build` to start the services.
+You can accesss http://127.0.0.1:8000/crypto/test_api_key to verify that the provided API key (stored in in .env) is still valid.
+You can then access the API on http://127.0.0.1:8000/crypto/sign using the parameters `message` and `callback_url`, e.g.: http://127.0.0.1:8000/crypto/sign?message=This is a test Message?&callback_url=https://footy.schubmann.dev/callback/
+
+The background worker is set up to run every 30 seconds - this value can be decreased if you want the retry mechanism to be faster. But as the threshold is 10 requests per minute, this shouldn't change too much.
+Messages that are submitted by the user are stored persistently in the database, together with their signatures. If a signature was not yet fulfilled (returned to the user) then the background service will try to return it to the user until it succeeds, even after the whole service restarts or stops.

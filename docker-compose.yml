@@ -12,9 +12,9 @@ services:
     volumes:
       - .:/code
     ports:
-      - 8000:8000
-      - 5678:5678
-      - 9922:22
+      - "8000:8000"
+      - "5678:5678"
+      - "9922:22"
     env_file:
       - ./.env
     networks:
