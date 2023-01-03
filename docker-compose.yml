@@ -13,17 +13,20 @@ services:
       - .:/code
     ports:
       - "8000:8000"
-      - "5678:5678"
-      - "9922:22"
+      # - "5678:5678" # Only needed for third command to debug within VSCode
+      # - "9922:22"
     env_file:
       - ./.env
     networks:
       - live
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
   redis:
     restart: always
     image: redis:latest
-    ports:
-      - "6379:6379"
     hostname: redis
     volumes:
       - redis_jusintime_data:/data
@@ -39,7 +42,10 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
     networks:
       - live
   celery_beat:
@@ -52,17 +58,25 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
     networks:
       - live
   db:
-    image: postgres:14.5
+    image: postgres:13.3
     volumes:
     - postgres_data:/var/lib/postgresql/data
     env_file:
       - ./.env
     networks:
       - live
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   redis_jusintime_data:
